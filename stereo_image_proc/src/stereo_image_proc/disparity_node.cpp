@@ -99,6 +99,9 @@ private:
   // contains scratch buffers for block matching
   stereo_image_proc::StereoProcessor block_matcher_;
 
+  int image_height_;
+  int image_width_;
+
   void connectCb();
 
   void imageCb(
@@ -187,8 +190,18 @@ DisparityNode::DisparityNode(const rclcpp::NodeOptions & options)
   std::map<std::string, std::pair<int, rcl_interfaces::msg::ParameterDescriptor>> int_params;
   add_param_to_map(
     int_params,
-    "stereo_algorithm",
+    "image_width",
+    "Set width of resized images.",
+    640, 320, 1920, 1);  // default, from, to, step
+  add_param_to_map(
+    int_params,
+    "image_height",
     "Stereo algorithm: Block Matching (0) or Semi-Global Block Matching (1)",
+    480, 240, 1080, 1);  // default, from, to, step
+  add_param_to_map(
+    int_params,
+    "stereo_algorithm",
+    "Set height of resized images.",
     0, 0, 1, 1);  // default, from, to, step
   add_param_to_map(
     int_params,
@@ -309,13 +322,45 @@ void DisparityNode::imageCb(
     return;
   }
 
+  sensor_msgs::msg::CameraInfo l_info_msg3;
+  sensor_msgs::msg::CameraInfo r_info_msg3;
+
+  l_info_msg3.header = l_info_msg->header;
+  l_info_msg3.distortion_model= l_info_msg->distortion_model;
+  l_info_msg3.d = l_info_msg->d;
+  l_info_msg3.k = l_info_msg->k;
+  l_info_msg3.r = l_info_msg->r;
+  l_info_msg3.p = l_info_msg->p;
+  l_info_msg3.binning_x = l_info_msg->binning_x;
+  l_info_msg3.binning_y = l_info_msg->binning_y;
+  l_info_msg3.roi = l_info_msg->roi;
+
+  r_info_msg3.header = r_info_msg->header;
+  r_info_msg3.distortion_model= r_info_msg->distortion_model;
+  r_info_msg3.d = r_info_msg->d;
+  r_info_msg3.k = r_info_msg->k;
+  r_info_msg3.r = r_info_msg->r;
+  r_info_msg3.p = r_info_msg->p;
+  r_info_msg3.binning_x = r_info_msg->binning_x;
+  r_info_msg3.binning_y = r_info_msg->binning_y;
+  r_info_msg3.roi = r_info_msg->roi;
+  
+  l_info_msg3.height = image_height_;
+  l_info_msg3.width = image_width_;
+  r_info_msg3.height = image_height_;
+  r_info_msg3.width = image_width_;
+  sensor_msgs::msg::CameraInfo::SharedPtr l_info_msg4;
+  sensor_msgs::msg::CameraInfo::SharedPtr r_info_msg4;
+  l_info_msg4 = std::make_shared<sensor_msgs::msg::CameraInfo>(l_info_msg3);
+  r_info_msg4 = std::make_shared<sensor_msgs::msg::CameraInfo>(r_info_msg3);
+
   // Update the camera model
-  model_.fromCameraInfo(l_info_msg, r_info_msg);
+  model_.fromCameraInfo(l_info_msg4, r_info_msg4);
 
   // Allocate new disparity image message
   auto disp_msg = std::make_shared<stereo_msgs::msg::DisparityImage>();
-  disp_msg->header = l_info_msg->header;
-  disp_msg->image.header = l_info_msg->header;
+  disp_msg->header = l_info_msg4->header;
+  disp_msg->image.header = l_info_msg4->header;
 
   // Compute window of (potentially) valid disparities
   int border = block_matcher_.getCorrelationWindowSize() / 2;
@@ -336,10 +381,19 @@ void DisparityNode::imageCb(
   disp_msg->valid_window.height = bottom - top;
 
   // Create cv::Mat views onto all buffers
-  const cv::Mat_<uint8_t> l_image =
+  cv::Mat_<uint8_t> l_image2 =
     cv_bridge::toCvShare(l_image_msg, sensor_msgs::image_encodings::MONO8)->image;
-  const cv::Mat_<uint8_t> r_image =
+  cv::Mat_<uint8_t> r_image2 =
     cv_bridge::toCvShare(r_image_msg, sensor_msgs::image_encodings::MONO8)->image;
+
+  cv::Mat_<uint8_t> l_image;
+  cv::Mat_<uint8_t> r_image;
+  cv::resize(l_image2, l_image, cv::Size(image_width_, image_height_), cv::INTER_LINEAR);
+  cv::resize(r_image2, r_image, cv::Size(image_width_, image_height_), cv::INTER_LINEAR);
+  // cv::resize(l_image2, l_image, cv::Size(320, 240), cv::INTER_LINEAR);
+  // cv::resize(r_image2, r_image, cv::Size(320, 240), cv::INTER_LINEAR);
+
+  // const cv::Mat_<uint8_t> l_image;
 
   // Perform block matching to find the disparities
   block_matcher_.processDisparity(l_image, r_image, model_, *disp_msg);
@@ -392,6 +446,10 @@ rcl_interfaces::msg::SetParametersResult DisparityNode::parameterSetCb(
       block_matcher_.setP2(param.as_double());
     } else if ("disp12_max_diff" == param_name) {
       block_matcher_.setDisp12MaxDiff(param.as_int());
+    } else if ("image_width" == param_name){
+      image_width_ = param.as_int();
+    } else if ("image_height" == param_name){
+      image_height_ = param.as_int();
     }
   }
   return result;

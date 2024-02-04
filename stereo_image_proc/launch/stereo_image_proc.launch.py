@@ -70,12 +70,18 @@ def generate_launch_description():
                 'P1': LaunchConfiguration('P1'),
                 'P2': LaunchConfiguration('P2'),
                 'full_dp': LaunchConfiguration('full_dp'),
+                'image_width': LaunchConfiguration('image_width'),
+                'image_height': LaunchConfiguration('image_height'),
             }],
             remappings=[
-                ('left/image_rect', [LaunchConfiguration('left_namespace'), '/image_rect']),
-                ('left/camera_info', [LaunchConfiguration('left_namespace'), '/camera_info']),
-                ('right/image_rect', [LaunchConfiguration('right_namespace'), '/image_rect']),
-                ('right/camera_info', [LaunchConfiguration('right_namespace'), '/camera_info']),
+                ('left/image_rect', '/hcru2/pt_stereo_rect/left/image'),
+                ('left/camera_info', '/hcru2/pt_stereo_rect/left/camera_info'),
+                ('right/image_rect', '/hcru2/pt_stereo_rect/right/image'),
+                ('right/camera_info', '/hcru2/pt_stereo_rect/right/camera_info'),
+                # ('left/image_rect', '/davis/left/blended_image_rect'),
+                # ('left/camera_info', '/davis/left/camera_info'),
+                # ('right/image_rect', '/davis/right/blended_image_rect'),
+                # ('right/camera_info', '/davis/right/camera_info'),
             ]
         ),
         ComposableNode(
@@ -88,31 +94,40 @@ def generate_launch_description():
                 'use_system_default_qos': LaunchConfiguration('use_system_default_qos'),
             }],
             remappings=[
-                ('left/camera_info', [LaunchConfiguration('left_namespace'), '/camera_info']),
-                ('right/camera_info', [LaunchConfiguration('right_namespace'), '/camera_info']),
-                (
-                    'left/image_rect_color',
-                    [LaunchConfiguration('left_namespace'), '/image_rect_color']
-                ),
+                ('left/camera_info', '/hcru2/pt_stereo_rect/left/camera_info'),
+                ('right/camera_info', '/hcru2/pt_stereo_rect/right/camera_info'),                
+                ('left/image_rect_color', '/hcru2/pt_stereo_rect/left/image'),
+                # ('left/camera_info', '/davis/left/camera_info'),
+                # ('right/camera_info', '/davis/right/camera_info'),                
+                # ('left/image_rect_color', '/davis/left/blended_image_rect'),
             ]
         ),
     ]
 
     return LaunchDescription([
+       DeclareLaunchArgument(
+            name='image_width', default_value='640',
+            description='Set width of resized images.'
+        ),
+        DeclareLaunchArgument(
+            name='image_height', default_value='480',
+            description='Set height of resized images.'
+        ),
+
         DeclareLaunchArgument(
             name='approximate_sync', default_value='False',
             description='Whether to use approximate synchronization of topics. Set to true if '
                         'the left and right cameras do not produce exactly synced timestamps.'
         ),
         DeclareLaunchArgument(
-            name='avoid_point_cloud_padding', default_value='False',
+            name='avoid_point_cloud_padding', default_value='True',
             description='Avoid alignment padding in the generated point cloud.'
                         'This reduces bandwidth requirements, as the point cloud size is halved.'
                         'Using point clouds without alignment padding might degrade performance '
                         'for some algorithms.'
         ),
         DeclareLaunchArgument(
-            name='use_color', default_value='True',
+            name='use_color', default_value='False',
             description='Generate point cloud with rgb data.'
         ),
         DeclareLaunchArgument(
@@ -120,7 +135,7 @@ def generate_launch_description():
             description='Use the RMW QoS settings for the image and camera info subscriptions.'
         ),
         DeclareLaunchArgument(
-            name='launch_image_proc', default_value='True',
+            name='launch_image_proc', default_value='False',
             description='Whether to launch debayer and rectify nodes from image_proc.'
         ),
         DeclareLaunchArgument(
