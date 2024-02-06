@@ -36,7 +36,7 @@
 
 #include "rcutils/logging_macros.h"
 
-#include "stereo_image_proc/stereo_processor.hpp"
+#include "stereo_image_processing/stereo_processor.hpp"
 
 #include <sensor_msgs/image_encodings.hpp>
 
@@ -48,7 +48,7 @@
 // Uncomment below instead
 // #include <rcutils/assert.h>
 
-namespace stereo_image_proc
+namespace stereo_image_processing
 {
 
 bool StereoProcessor::process(
@@ -336,4 +336,4 @@ void StereoProcessor::processPoints2(
   }
 }
 
-}  // namespace stereo_image_proc
+}  // namespace stereo_image_processing

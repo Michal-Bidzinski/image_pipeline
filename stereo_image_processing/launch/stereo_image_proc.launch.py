@@ -51,8 +51,8 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     composable_nodes = [
         ComposableNode(
-            package='stereo_image_proc',
-            plugin='stereo_image_proc::DisparityNode',
+            package='stereo_image_processing',
+            plugin='stereo_image_processing::DisparityNode',
             parameters=[{
                 'approximate_sync': LaunchConfiguration('approximate_sync'),
                 'use_system_default_qos': LaunchConfiguration('use_system_default_qos'),
@@ -85,8 +85,8 @@ def generate_launch_description():
             ]
         ),
         ComposableNode(
-            package='stereo_image_proc',
-            plugin='stereo_image_proc::PointCloudNode',
+            package='stereo_image_processing',
+            plugin='stereo_image_processing::PointCloudNode',
             parameters=[{
                 'approximate_sync': LaunchConfiguration('approximate_sync'),
                 'avoid_point_cloud_padding': LaunchConfiguration('avoid_point_cloud_padding'),
@@ -217,7 +217,7 @@ def generate_launch_description():
             condition=LaunchConfigurationEquals('container', ''),
             package='rclcpp_components',
             executable='component_container',
-            name='stereo_image_proc_container',
+            name='stereo_image_processing_container',
             namespace='',
             composable_node_descriptions=composable_nodes,
         ),
@@ -232,10 +232,10 @@ def generate_launch_description():
             condition=LaunchConfigurationEquals('container', ''),
             name='container',
             value=PythonExpression([
-                '"stereo_image_proc_container"', ' if ',
+                '"stereo_image_processing_container"', ' if ',
                 '"', LaunchConfiguration('ros_namespace', default=''), '"',
                 ' == "" else ', '"',
-                LaunchConfiguration('ros_namespace', default=''), '/stereo_image_proc_container"'
+                LaunchConfiguration('ros_namespace', default=''), '/stereo_image_processing_container"'
             ]),
         ),
         GroupAction(

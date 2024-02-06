@@ -30,8 +30,8 @@
 // ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef STEREO_IMAGE_PROC__STEREO_PROCESSOR_HPP_
-#define STEREO_IMAGE_PROC__STEREO_PROCESSOR_HPP_
+#ifndef STEREO_IMAGE_PROCESSING__STEREO_PROCESSOR_HPP_
+#define STEREO_IMAGE_PROCESSING__STEREO_PROCESSOR_HPP_
 
 #include <string>
 
@@ -42,7 +42,7 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <stereo_msgs/msg/disparity_image.hpp>
 
-namespace stereo_image_proc
+namespace stereo_image_processing
 {
 
 struct StereoImageSet

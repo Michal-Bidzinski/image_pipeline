@@ -50,7 +50,7 @@
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <stereo_msgs/msg/disparity_image.hpp>
 
-namespace stereo_image_proc
+namespace stereo_image_processing
 {
 
 class PointCloudNode : public rclcpp::Node
@@ -314,7 +314,7 @@ void PointCloudNode::imageCb(
   pub_points2_->publish(*points_msg);
 }
 
-}  // namespace stereo_image_proc
+}  // namespace stereo_image_processing
 
 // Register node
-RCLCPP_COMPONENTS_REGISTER_NODE(stereo_image_proc::PointCloudNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(stereo_image_processing::PointCloudNode)

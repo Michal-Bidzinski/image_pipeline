@@ -45,7 +45,7 @@
 #include "message_filters/sync_policies/approximate_time.h"
 #include "message_filters/sync_policies/exact_time.h"
 
-#include <stereo_image_proc/stereo_processor.hpp>
+#include <stereo_image_processing/stereo_processor.hpp>
 
 #include <image_transport/image_transport.hpp>
 #include <image_transport/subscriber_filter.hpp>
@@ -56,7 +56,7 @@
 
 #include <opencv2/calib3d/calib3d.hpp>
 
-namespace stereo_image_proc
+namespace stereo_image_processing
 {
 
 class DisparityNode : public rclcpp::Node
@@ -97,7 +97,7 @@ private:
   // Processing state (note: only safe because we're single-threaded!)
   image_geometry::StereoCameraModel model_;
   // contains scratch buffers for block matching
-  stereo_image_proc::StereoProcessor block_matcher_;
+  stereo_image_processing::StereoProcessor block_matcher_;
 
   int image_height_;
   int image_width_;
@@ -455,7 +455,7 @@ rcl_interfaces::msg::SetParametersResult DisparityNode::parameterSetCb(
   return result;
 }
 
-}  // namespace stereo_image_proc
+}  // namespace stereo_image_processing
 
 // Register component
-RCLCPP_COMPONENTS_REGISTER_NODE(stereo_image_proc::DisparityNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(stereo_image_processing::DisparityNode)
