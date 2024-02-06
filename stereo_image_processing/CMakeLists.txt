@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(stereo_image_proc)
+project(stereo_image_processing)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
@@ -27,11 +27,11 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN "stereo_image_proc::DisparityNode"
+  PLUGIN "stereo_image_processing::DisparityNode"
   EXECUTABLE disparity_node
 )
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN "stereo_image_proc::PointCloudNode"
+  PLUGIN "stereo_image_processing::PointCloudNode"
   EXECUTABLE point_cloud_node
 )
 
