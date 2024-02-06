@@ -311,6 +311,6 @@ private:
   mutable cv::Mat_<cv::Vec3f> dense_points_;
 };
 
-}  // namespace stereo_image_proc
+}  // namespace stereo_image_processing
 
-#endif  // STEREO_IMAGE_PROC__STEREO_PROCESSOR_HPP_
+#endif  // STEREO_IMAGE_PROCESSING__STEREO_PROCESSOR_HPP_
