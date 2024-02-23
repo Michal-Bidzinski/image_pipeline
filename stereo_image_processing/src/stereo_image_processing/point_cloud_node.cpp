@@ -85,6 +85,8 @@ private:
   image_geometry::StereoCameraModel model_;
   cv::Mat_<cv::Vec3f> points_mat_;  // scratch buffer
 
+  std::string point_cloud_frame_;
+
   void connectCb();
 
   void imageCb(
@@ -112,6 +114,8 @@ PointCloudNode::PointCloudNode(const rclcpp::NodeOptions & options)
     "Using point clouds without alignment padding might degrade performance for some algorithms.";
   this->declare_parameter("avoid_point_cloud_padding", false, descriptor);
   this->declare_parameter("use_color", true);
+
+  point_cloud_frame_ = this->declare_parameter("point_cloud_frame", "camera_frame");
 
   // Synchronize callbacks
   if (approx) {
@@ -180,8 +184,44 @@ void PointCloudNode::imageCb(
     return;
   }
 
+  sensor_msgs::msg::CameraInfo l_info_msg_c;
+  sensor_msgs::msg::CameraInfo r_info_msg_c;
+
+  l_info_msg_c.header = l_info_msg->header;
+  l_info_msg_c.distortion_model= l_info_msg->distortion_model;
+  l_info_msg_c.d = l_info_msg->d;
+  // l_info_msg_c.d = {-0.197412, 0.236726, 0.0, 0.0, 0.0};
+  l_info_msg_c.k = l_info_msg->k;
+  l_info_msg_c.r = l_info_msg->r;
+  l_info_msg_c.p = l_info_msg->p;
+  l_info_msg_c.binning_x = l_info_msg->binning_x;
+  l_info_msg_c.binning_y = l_info_msg->binning_y;
+  l_info_msg_c.roi = l_info_msg->roi;
+
+  r_info_msg_c.header = r_info_msg->header;
+  r_info_msg_c.header.frame_id = l_info_msg_c.header.frame_id;
+  r_info_msg_c.distortion_model= r_info_msg->distortion_model;
+  r_info_msg_c.d = r_info_msg->d;
+  // r_info_msg_c.d = {-0.197412, 0.236726, 0.0, 0.0, 0.0};
+  r_info_msg_c.k = r_info_msg->k;
+  r_info_msg_c.r = r_info_msg->r;
+  r_info_msg_c.p = r_info_msg->p;
+  // r_info_msg_c.p[3] = -78.045330571;
+  r_info_msg_c.binning_x = r_info_msg->binning_x;
+  r_info_msg_c.binning_y = r_info_msg->binning_y;
+  r_info_msg_c.roi = r_info_msg->roi;
+  
+  l_info_msg_c.height = 720;
+  l_info_msg_c.width = 1280;
+  r_info_msg_c.height = 720;
+  r_info_msg_c.width = 1280;
+  sensor_msgs::msg::CameraInfo::SharedPtr l_info_msg_ptr;
+  sensor_msgs::msg::CameraInfo::SharedPtr r_info_msg_ptr;
+  l_info_msg_ptr = std::make_shared<sensor_msgs::msg::CameraInfo>(l_info_msg_c);
+  r_info_msg_ptr = std::make_shared<sensor_msgs::msg::CameraInfo>(r_info_msg_c);
+
   // Update the camera model
-  model_.fromCameraInfo(l_info_msg, r_info_msg);
+  model_.fromCameraInfo(l_info_msg_ptr, r_info_msg_ptr);
 
   // Calculate point cloud
   const sensor_msgs::msg::Image & dimage = disp_msg->image;
@@ -201,6 +241,12 @@ void PointCloudNode::imageCb(
   points_msg->width = mat.cols;
   points_msg->is_bigendian = false;
   points_msg->is_dense = false;  // there may be invalid points
+
+  // Set frame_id
+  if (point_cloud_frame_.size() > 0)
+  {
+    points_msg->header.frame_id = point_cloud_frame_;
+  }
 
   sensor_msgs::PointCloud2Modifier pcd_modifier(*points_msg);
 
@@ -246,8 +292,22 @@ void PointCloudNode::imageCb(
   float bad_point = std::numeric_limits<float>::quiet_NaN();
   for (int v = 0; v < mat.rows; ++v) {
     for (int u = 0; u < mat.cols; ++u, ++iter_x, ++iter_y, ++iter_z) {
+
+
+      // if (mat(v, u)[0] >= 0.0)
+      // {
+      //   RCLCPP_INFO(this->get_logger(), "POINTS %d i %d: %f, %f, %f", v, u, mat(v, u)[0], mat(v, u)[1], mat(v, u)[2]);
+      // }
+
       if (isValidPoint(mat(v, u))) {
         // x,y,z
+        // RCLCPP_INFO(this->get_logger(), "POINTS %d i %d: %f, %f, %f", v, u, mat(v, u)[0], mat(v, u)[1], mat(v, u)[2]);
+
+        // if (mat(v, u)[0] >= 0.0)
+        // {
+        //   RCLCPP_INFO(this->get_logger(), "POINTS %d i %d: %f, %f, %f", v, u, mat(v, u)[0], mat(v, u)[1], mat(v, u)[2]);
+        // }
+
         *iter_x = mat(v, u)[0];
         *iter_y = mat(v, u)[1];
         *iter_z = mat(v, u)[2];

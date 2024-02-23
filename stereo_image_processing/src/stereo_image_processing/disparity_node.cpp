@@ -172,6 +172,9 @@ DisparityNode::DisparityNode(const rclcpp::NodeOptions & options)
         sub_r_image_, sub_r_info_));
     approximate_sync_->registerCallback(
       std::bind(&DisparityNode::imageCb, this, _1, _2, _3, _4));
+
+    // approximate_sync_->setMaxIntervalDuration(rclcpp::Duration(2.0, 0));
+
   } else {
     exact_sync_.reset(
       new ExactSync(
@@ -322,45 +325,49 @@ void DisparityNode::imageCb(
     return;
   }
 
-  sensor_msgs::msg::CameraInfo l_info_msg3;
-  sensor_msgs::msg::CameraInfo r_info_msg3;
+  sensor_msgs::msg::CameraInfo l_info_msg_c;
+  sensor_msgs::msg::CameraInfo r_info_msg_c;
 
-  l_info_msg3.header = l_info_msg->header;
-  l_info_msg3.distortion_model= l_info_msg->distortion_model;
-  l_info_msg3.d = l_info_msg->d;
-  l_info_msg3.k = l_info_msg->k;
-  l_info_msg3.r = l_info_msg->r;
-  l_info_msg3.p = l_info_msg->p;
-  l_info_msg3.binning_x = l_info_msg->binning_x;
-  l_info_msg3.binning_y = l_info_msg->binning_y;
-  l_info_msg3.roi = l_info_msg->roi;
+  l_info_msg_c.header = l_info_msg->header;
+  l_info_msg_c.distortion_model= l_info_msg->distortion_model;
+  l_info_msg_c.d = l_info_msg->d;
+  // l_info_msg_c.d = {-0.197412, 0.236726, 0.0, 0.0, 0.0};
+  l_info_msg_c.k = l_info_msg->k;
+  l_info_msg_c.r = l_info_msg->r;
+  l_info_msg_c.p = l_info_msg->p;
+  l_info_msg_c.binning_x = l_info_msg->binning_x;
+  l_info_msg_c.binning_y = l_info_msg->binning_y;
+  l_info_msg_c.roi = l_info_msg->roi;
 
-  r_info_msg3.header = r_info_msg->header;
-  r_info_msg3.distortion_model= r_info_msg->distortion_model;
-  r_info_msg3.d = r_info_msg->d;
-  r_info_msg3.k = r_info_msg->k;
-  r_info_msg3.r = r_info_msg->r;
-  r_info_msg3.p = r_info_msg->p;
-  r_info_msg3.binning_x = r_info_msg->binning_x;
-  r_info_msg3.binning_y = r_info_msg->binning_y;
-  r_info_msg3.roi = r_info_msg->roi;
+  r_info_msg_c.header = r_info_msg->header;
+  r_info_msg_c.header.frame_id = l_info_msg_c.header.frame_id;
+  r_info_msg_c.distortion_model= r_info_msg->distortion_model;
+  r_info_msg_c.d = r_info_msg->d;
+  // r_info_msg_c.d = {-0.197412, 0.236726, 0.0, 0.0, 0.0};
+  r_info_msg_c.k = r_info_msg->k;
+  r_info_msg_c.r = r_info_msg->r;
+  r_info_msg_c.p = r_info_msg->p;
+  // r_info_msg_c.p[3] = -78.045330571;
+  r_info_msg_c.binning_x = r_info_msg->binning_x;
+  r_info_msg_c.binning_y = r_info_msg->binning_y;
+  r_info_msg_c.roi = r_info_msg->roi;
   
-  l_info_msg3.height = image_height_;
-  l_info_msg3.width = image_width_;
-  r_info_msg3.height = image_height_;
-  r_info_msg3.width = image_width_;
-  sensor_msgs::msg::CameraInfo::SharedPtr l_info_msg4;
-  sensor_msgs::msg::CameraInfo::SharedPtr r_info_msg4;
-  l_info_msg4 = std::make_shared<sensor_msgs::msg::CameraInfo>(l_info_msg3);
-  r_info_msg4 = std::make_shared<sensor_msgs::msg::CameraInfo>(r_info_msg3);
+  l_info_msg_c.height = image_height_;
+  l_info_msg_c.width = image_width_;
+  r_info_msg_c.height = image_height_;
+  r_info_msg_c.width = image_width_;
+  sensor_msgs::msg::CameraInfo::SharedPtr l_info_msg_ptr;
+  sensor_msgs::msg::CameraInfo::SharedPtr r_info_msg_ptr;
+  l_info_msg_ptr = std::make_shared<sensor_msgs::msg::CameraInfo>(l_info_msg_c);
+  r_info_msg_ptr = std::make_shared<sensor_msgs::msg::CameraInfo>(r_info_msg_c);
 
   // Update the camera model
-  model_.fromCameraInfo(l_info_msg4, r_info_msg4);
+  model_.fromCameraInfo(l_info_msg_ptr, r_info_msg_ptr);
 
   // Allocate new disparity image message
   auto disp_msg = std::make_shared<stereo_msgs::msg::DisparityImage>();
-  disp_msg->header = l_info_msg4->header;
-  disp_msg->image.header = l_info_msg4->header;
+  disp_msg->header = l_info_msg_ptr->header;
+  disp_msg->image.header = l_info_msg_ptr->header;
 
   // Compute window of (potentially) valid disparities
   int border = block_matcher_.getCorrelationWindowSize() / 2;
@@ -381,19 +388,38 @@ void DisparityNode::imageCb(
   disp_msg->valid_window.height = bottom - top;
 
   // Create cv::Mat views onto all buffers
-  cv::Mat_<uint8_t> l_image2 =
-    cv_bridge::toCvShare(l_image_msg, sensor_msgs::image_encodings::MONO8)->image;
-  cv::Mat_<uint8_t> r_image2 =
-    cv_bridge::toCvShare(r_image_msg, sensor_msgs::image_encodings::MONO8)->image;
+  cv::Mat_<uint8_t> l_image_original;
+  cv::Mat_<uint8_t> r_image_original;
+  
+  namespace enc = sensor_msgs::image_encodings;
+  const std::string & encoding = l_image_msg->encoding;
+  if (encoding == enc::MONO8) {
+    l_image_original = cv_bridge::toCvShare(l_image_msg, sensor_msgs::image_encodings::MONO8)->image;
+    r_image_original = cv_bridge::toCvShare(r_image_msg, sensor_msgs::image_encodings::MONO8)->image;
+  } else if (encoding == enc::RGB8) {
+    RCLCPP_INFO(this->get_logger(), "RGB8");
+    auto l_image_original2 = cv_bridge::toCvShare(l_image_msg, sensor_msgs::image_encodings::RGB8)->image;
+    auto r_image_original2 = cv_bridge::toCvShare(r_image_msg, sensor_msgs::image_encodings::RGB8)->image;
+
+    cv::cvtColor(l_image_original2, l_image_original, CV_RGB2GRAY);
+    cv::cvtColor(r_image_original2, r_image_original, CV_RGB2GRAY);
+
+
+  } else if (encoding == enc::BGR8) {
+    l_image_original = cv_bridge::toCvShare(l_image_msg, sensor_msgs::image_encodings::BGR8)->image;
+    r_image_original = cv_bridge::toCvShare(r_image_msg, sensor_msgs::image_encodings::BGR8)->image;
+  } else {
+    // Throttle duration in milliseconds
+    RCUTILS_LOG_WARN_THROTTLE(
+      RCUTILS_STEADY_TIME, 30000,
+      "Could not fill color channel of the point cloud, "
+      "unsupported encoding '%s'", encoding.c_str());
+  }
 
   cv::Mat_<uint8_t> l_image;
   cv::Mat_<uint8_t> r_image;
-  cv::resize(l_image2, l_image, cv::Size(image_width_, image_height_), cv::INTER_LINEAR);
-  cv::resize(r_image2, r_image, cv::Size(image_width_, image_height_), cv::INTER_LINEAR);
-  // cv::resize(l_image2, l_image, cv::Size(320, 240), cv::INTER_LINEAR);
-  // cv::resize(r_image2, r_image, cv::Size(320, 240), cv::INTER_LINEAR);
-
-  // const cv::Mat_<uint8_t> l_image;
+  cv::resize(l_image_original, l_image, cv::Size(image_width_, image_height_), cv::INTER_LINEAR);
+  cv::resize(r_image_original, r_image, cv::Size(image_width_, image_height_), cv::INTER_LINEAR);
 
   // Perform block matching to find the disparities
   block_matcher_.processDisparity(l_image, r_image, model_, *disp_msg);

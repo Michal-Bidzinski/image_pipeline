@@ -74,14 +74,22 @@ def generate_launch_description():
                 'image_height': LaunchConfiguration('image_height'),
             }],
             remappings=[
-                ('left/image_rect', '/hcru2/pt_stereo_rect/left/image'),
-                ('left/camera_info', '/hcru2/pt_stereo_rect/left/camera_info'),
-                ('right/image_rect', '/hcru2/pt_stereo_rect/right/image'),
-                ('right/camera_info', '/hcru2/pt_stereo_rect/right/camera_info'),
+                # ('left/image_rect', '/hcru2/pt_stereo_rect/left/image'),
+                # ('left/camera_info', '/hcru2/pt_stereo_rect/left/camera_info'),
+                # ('right/image_rect', '/hcru2/pt_stereo_rect/right/image'),
+                # ('right/camera_info', '/hcru2/pt_stereo_rect/right/camera_info'),
                 # ('left/image_rect', '/davis/left/blended_image_rect'),
                 # ('left/camera_info', '/davis/left/camera_info'),
                 # ('right/image_rect', '/davis/right/blended_image_rect'),
                 # ('right/camera_info', '/davis/right/camera_info'),
+                # ('left/image_rect', '/left_rgb'),
+                # ('left/camera_info', '/left_camera_info'),
+                # ('right/image_rect', '/right_rgb'),
+                # ('right/camera_info', '/right_camera_info'),
+                ('left/image_rect', '/lunarsim/camera_left/raw'),
+                ('left/camera_info', '/lunarsim/camera_left/camera_info'),
+                ('right/image_rect', '/lunarsim/camera_right/raw'),
+                ('right/camera_info', '/lunarsim/camera_right/camera_info'),
             ]
         ),
         ComposableNode(
@@ -92,30 +100,41 @@ def generate_launch_description():
                 'avoid_point_cloud_padding': LaunchConfiguration('avoid_point_cloud_padding'),
                 'use_color': LaunchConfiguration('use_color'),
                 'use_system_default_qos': LaunchConfiguration('use_system_default_qos'),
+                'point_cloud_frame': LaunchConfiguration('point_cloud_frame'),
             }],
             remappings=[
-                ('left/camera_info', '/hcru2/pt_stereo_rect/left/camera_info'),
-                ('right/camera_info', '/hcru2/pt_stereo_rect/right/camera_info'),                
-                ('left/image_rect_color', '/hcru2/pt_stereo_rect/left/image'),
+                # ('left/camera_info', '/hcru2/pt_stereo_rect/left/camera_info'),
+                # ('right/camera_info', '/hcru2/pt_stereo_rect/right/camera_info'),                
+                # ('left/image_rect_color', '/hcru2/pt_stereo_rect/left/image'),
                 # ('left/camera_info', '/davis/left/camera_info'),
                 # ('right/camera_info', '/davis/right/camera_info'),                
                 # ('left/image_rect_color', '/davis/left/blended_image_rect'),
+                # ('left/camera_info', '/left_camera_info'),
+                # ('right/camera_info', '/right_camera_info'),
+                # ('left/image_rect_color', '/left_rgb'),
+                ('left/camera_info', '/lunarsim/camera_left/camera_info'),
+                ('right/camera_info', '/lunarsim/camera_right/camera_info'),                
+                ('left/image_rect_color', '/lunarsim/camera_left/raw'),
             ]
         ),
     ]
 
     return LaunchDescription([
        DeclareLaunchArgument(
-            name='image_width', default_value='640',
+            name='image_width', default_value='1280',
             description='Set width of resized images.'
         ),
         DeclareLaunchArgument(
-            name='image_height', default_value='480',
+            name='image_height', default_value='720',
             description='Set height of resized images.'
+        ),
+        DeclareLaunchArgument(
+            name='point_cloud_frame', default_value='',
+            description='Frame name for published point cloud.'
         ),
 
         DeclareLaunchArgument(
-            name='approximate_sync', default_value='False',
+            name='approximate_sync', default_value='True',
             description='Whether to use approximate synchronization of topics. Set to true if '
                         'the left and right cameras do not produce exactly synced timestamps.'
         ),
