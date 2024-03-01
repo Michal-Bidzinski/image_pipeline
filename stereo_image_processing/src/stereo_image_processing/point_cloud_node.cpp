@@ -206,8 +206,27 @@ void PointCloudNode::imageCb(
   sensor_msgs::msg::CameraInfo l_info_msg_c;
   sensor_msgs::msg::CameraInfo r_info_msg_c;
 
-  l_info_msg_c = *l_info_msg;
-  r_info_msg_c = *r_info_msg;
+  l_info_msg_c.header = l_info_msg->header;
+  l_info_msg_c.distortion_model= l_info_msg->distortion_model;
+  l_info_msg_c.d = l_info_msg->d;
+  l_info_msg_c.k = l_info_msg->k;
+  l_info_msg_c.r = l_info_msg->r;
+  l_info_msg_c.p = l_info_msg->p;
+  l_info_msg_c.binning_x = l_info_msg->binning_x;
+  l_info_msg_c.binning_y = l_info_msg->binning_y;
+  l_info_msg_c.roi = l_info_msg->roi;
+
+  r_info_msg_c.header = r_info_msg->header;
+  r_info_msg_c.header.frame_id = l_info_msg_c.header.frame_id;
+  r_info_msg_c.distortion_model= r_info_msg->distortion_model;
+  r_info_msg_c.d = r_info_msg->d;
+  r_info_msg_c.k = r_info_msg->k;
+  r_info_msg_c.r = r_info_msg->r;
+  r_info_msg_c.p = r_info_msg->p;
+  // r_info_msg_c.p[3] = 34.999;
+  r_info_msg_c.binning_x = r_info_msg->binning_x;
+  r_info_msg_c.binning_y = r_info_msg->binning_y;
+  r_info_msg_c.roi = r_info_msg->roi;
   
   l_info_msg_c.height = image_height_;
   l_info_msg_c.width = image_width_;

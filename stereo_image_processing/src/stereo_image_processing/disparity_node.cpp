@@ -328,8 +328,27 @@ void DisparityNode::imageCb(
   sensor_msgs::msg::CameraInfo l_info_msg_c;
   sensor_msgs::msg::CameraInfo r_info_msg_c;
 
-  l_info_msg_c = *l_info_msg;
-  r_info_msg_c = *r_info_msg;
+  l_info_msg_c.header = l_info_msg->header;
+  l_info_msg_c.distortion_model= l_info_msg->distortion_model;
+  l_info_msg_c.d = l_info_msg->d;
+  l_info_msg_c.k = l_info_msg->k;
+  l_info_msg_c.r = l_info_msg->r;
+  l_info_msg_c.p = l_info_msg->p;
+  l_info_msg_c.binning_x = l_info_msg->binning_x;
+  l_info_msg_c.binning_y = l_info_msg->binning_y;
+  l_info_msg_c.roi = l_info_msg->roi;
+
+  r_info_msg_c.header = r_info_msg->header;
+  r_info_msg_c.header.frame_id = l_info_msg_c.header.frame_id;
+  r_info_msg_c.distortion_model= r_info_msg->distortion_model;
+  r_info_msg_c.d = r_info_msg->d;
+  r_info_msg_c.k = r_info_msg->k;
+  r_info_msg_c.r = r_info_msg->r;
+  r_info_msg_c.p = r_info_msg->p;
+  // r_info_msg_c.p[3] = 34.999;
+  r_info_msg_c.binning_x = r_info_msg->binning_x;
+  r_info_msg_c.binning_y = r_info_msg->binning_y;
+  r_info_msg_c.roi = r_info_msg->roi;
   
   l_info_msg_c.height = image_height_;
   l_info_msg_c.width = image_width_;
@@ -356,21 +375,6 @@ void DisparityNode::imageCb(
   r_info_msg_c.p[2] *= scale_x;
   r_info_msg_c.p[5] *= scale_y;
   r_info_msg_c.p[6] *= scale_y;
-
-  // std::vector<int> k_id_x = {0, 2};
-  // std::vector<int> k_id_y = {4, 5};
-
-  // std::vector<int> p_id_x = {0, 2};
-  // std::vector<int> p_id_y = {4, 5};
-
-  // for (std::size_t j = 0; j < goal->targets[i].target.size(); ++j)
-  // {
-  //   l_info_msg_c[id] *= scale_x;
-  //   l_info_msg_c[id] *= scale_y;
-
-  //   l_info_msg_c[id] *= scale_x;
-  //   l_info_msg_c[id] *= scale_y;
-  // }
 
   sensor_msgs::msg::CameraInfo::SharedPtr l_info_msg_ptr;
   sensor_msgs::msg::CameraInfo::SharedPtr r_info_msg_ptr;
