@@ -101,6 +101,9 @@ def generate_launch_description():
                 'use_color': LaunchConfiguration('use_color'),
                 'use_system_default_qos': LaunchConfiguration('use_system_default_qos'),
                 'point_cloud_frame': LaunchConfiguration('point_cloud_frame'),
+                'image_width': LaunchConfiguration('image_width'),
+                'image_height': LaunchConfiguration('image_height'),
+                'distance_threshold': LaunchConfiguration('distance_threshold'),
             }],
             remappings=[
                 # ('left/camera_info', '/hcru2/pt_stereo_rect/left/camera_info'),
@@ -121,16 +124,20 @@ def generate_launch_description():
 
     return LaunchDescription([
        DeclareLaunchArgument(
-            name='image_width', default_value='1280',
+            name='image_width', default_value='640',
             description='Set width of resized images.'
         ),
         DeclareLaunchArgument(
-            name='image_height', default_value='720',
+            name='image_height', default_value='480',
             description='Set height of resized images.'
         ),
         DeclareLaunchArgument(
             name='point_cloud_frame', default_value='',
             description='Frame name for published point cloud.'
+        ),
+        DeclareLaunchArgument(
+            name='distance_threshold', default_value='400.0',
+            description='Threshold to filter point cloud by distance.'
         ),
 
         DeclareLaunchArgument(

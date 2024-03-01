@@ -33,6 +33,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <math.h>
 
 #include "image_geometry/stereo_camera_model.h"
 #include "message_filters/subscriber.h"
@@ -87,6 +88,12 @@ private:
 
   std::string point_cloud_frame_;
 
+  int image_height_;
+  int image_width_;
+  double distance_threshold_;
+
+  inline bool distancePoint(const cv::Vec3f & pt);
+
   void connectCb();
 
   void imageCb(
@@ -114,7 +121,9 @@ PointCloudNode::PointCloudNode(const rclcpp::NodeOptions & options)
     "Using point clouds without alignment padding might degrade performance for some algorithms.";
   this->declare_parameter("avoid_point_cloud_padding", false, descriptor);
   this->declare_parameter("use_color", true);
-
+  this->declare_parameter("image_width", 640);
+  this->declare_parameter("image_height", 480);
+  distance_threshold_ = this->declare_parameter("distance_threshold", 400.0);
   point_cloud_frame_ = this->declare_parameter("point_cloud_frame", "camera_frame");
 
   // Synchronize callbacks
@@ -170,7 +179,14 @@ inline bool isValidPoint(const cv::Vec3f & pt)
 {
   // Check both for disparities explicitly marked as invalid (where OpenCV maps pt.z to MISSING_Z)
   // and zero disparities (point mapped to infinity).
-  return pt[2] != image_geometry::StereoCameraModel::MISSING_Z && !std::isinf(pt[2]);
+  return (pt[2] != image_geometry::StereoCameraModel::MISSING_Z && !std::isinf(pt[2]));
+}
+
+inline bool PointCloudNode::distancePoint(const cv::Vec3f & pt)
+{
+  // Check both for disparities explicitly marked as invalid (where OpenCV maps pt.z to MISSING_Z)
+  // and zero disparities (point mapped to infinity).
+  return (sqrt(pow(pt[0], 2) + pow(pt[1], 2) + pow(pt[2], 2)) <= distance_threshold_);
 }
 
 void PointCloudNode::imageCb(
@@ -184,37 +200,41 @@ void PointCloudNode::imageCb(
     return;
   }
 
+  image_height_ = this->get_parameter("image_height").as_int();
+  image_width_ = this->get_parameter("image_width").as_int();
+
   sensor_msgs::msg::CameraInfo l_info_msg_c;
   sensor_msgs::msg::CameraInfo r_info_msg_c;
 
-  l_info_msg_c.header = l_info_msg->header;
-  l_info_msg_c.distortion_model= l_info_msg->distortion_model;
-  l_info_msg_c.d = l_info_msg->d;
-  // l_info_msg_c.d = {-0.197412, 0.236726, 0.0, 0.0, 0.0};
-  l_info_msg_c.k = l_info_msg->k;
-  l_info_msg_c.r = l_info_msg->r;
-  l_info_msg_c.p = l_info_msg->p;
-  l_info_msg_c.binning_x = l_info_msg->binning_x;
-  l_info_msg_c.binning_y = l_info_msg->binning_y;
-  l_info_msg_c.roi = l_info_msg->roi;
-
-  r_info_msg_c.header = r_info_msg->header;
-  r_info_msg_c.header.frame_id = l_info_msg_c.header.frame_id;
-  r_info_msg_c.distortion_model= r_info_msg->distortion_model;
-  r_info_msg_c.d = r_info_msg->d;
-  // r_info_msg_c.d = {-0.197412, 0.236726, 0.0, 0.0, 0.0};
-  r_info_msg_c.k = r_info_msg->k;
-  r_info_msg_c.r = r_info_msg->r;
-  r_info_msg_c.p = r_info_msg->p;
-  // r_info_msg_c.p[3] = -78.045330571;
-  r_info_msg_c.binning_x = r_info_msg->binning_x;
-  r_info_msg_c.binning_y = r_info_msg->binning_y;
-  r_info_msg_c.roi = r_info_msg->roi;
+  l_info_msg_c = *l_info_msg;
+  r_info_msg_c = *r_info_msg;
   
-  l_info_msg_c.height = 720;
-  l_info_msg_c.width = 1280;
-  r_info_msg_c.height = 720;
-  r_info_msg_c.width = 1280;
+  l_info_msg_c.height = image_height_;
+  l_info_msg_c.width = image_width_;
+  r_info_msg_c.height = image_height_;
+  r_info_msg_c.width = image_width_;
+
+  double scale_x = (double)image_width_ / l_info_msg->width;
+  double scale_y = (double)image_height_ / l_info_msg->height;
+
+  l_info_msg_c.k[0] *= scale_x;
+  l_info_msg_c.k[2] *= scale_x;
+  l_info_msg_c.k[4] *= scale_y;
+  l_info_msg_c.k[5] *= scale_y;
+  l_info_msg_c.p[0] *= scale_x;
+  l_info_msg_c.p[2] *= scale_x;
+  l_info_msg_c.p[5] *= scale_y;
+  l_info_msg_c.p[6] *= scale_y;
+
+  r_info_msg_c.k[0] *= scale_x;
+  r_info_msg_c.k[2] *= scale_x;
+  r_info_msg_c.k[4] *= scale_y;
+  r_info_msg_c.k[5] *= scale_y;
+  r_info_msg_c.p[0] *= scale_x;
+  r_info_msg_c.p[2] *= scale_x;
+  r_info_msg_c.p[5] *= scale_y;
+  r_info_msg_c.p[6] *= scale_y;
+
   sensor_msgs::msg::CameraInfo::SharedPtr l_info_msg_ptr;
   sensor_msgs::msg::CameraInfo::SharedPtr r_info_msg_ptr;
   l_info_msg_ptr = std::make_shared<sensor_msgs::msg::CameraInfo>(l_info_msg_c);
@@ -292,22 +312,7 @@ void PointCloudNode::imageCb(
   float bad_point = std::numeric_limits<float>::quiet_NaN();
   for (int v = 0; v < mat.rows; ++v) {
     for (int u = 0; u < mat.cols; ++u, ++iter_x, ++iter_y, ++iter_z) {
-
-
-      // if (mat(v, u)[0] >= 0.0)
-      // {
-      //   RCLCPP_INFO(this->get_logger(), "POINTS %d i %d: %f, %f, %f", v, u, mat(v, u)[0], mat(v, u)[1], mat(v, u)[2]);
-      // }
-
-      if (isValidPoint(mat(v, u))) {
-        // x,y,z
-        // RCLCPP_INFO(this->get_logger(), "POINTS %d i %d: %f, %f, %f", v, u, mat(v, u)[0], mat(v, u)[1], mat(v, u)[2]);
-
-        // if (mat(v, u)[0] >= 0.0)
-        // {
-        //   RCLCPP_INFO(this->get_logger(), "POINTS %d i %d: %f, %f, %f", v, u, mat(v, u)[0], mat(v, u)[1], mat(v, u)[2]);
-        // }
-
+      if (isValidPoint(mat(v, u)) && distancePoint(mat(v, u))) {
         *iter_x = mat(v, u)[0];
         *iter_y = mat(v, u)[1];
         *iter_z = mat(v, u)[2];
@@ -326,10 +331,12 @@ void PointCloudNode::imageCb(
     namespace enc = sensor_msgs::image_encodings;
     const std::string & encoding = l_image_msg->encoding;
     if (encoding == enc::MONO8) {
-      const cv::Mat_<uint8_t> color(
+      const cv::Mat_<uint8_t> color_original(
         l_image_msg->height, l_image_msg->width,
         const_cast<uint8_t *>(&l_image_msg->data[0]),
         l_image_msg->step);
+        cv::Mat_<uint8_t> color;
+        cv::resize(color_original, color, cv::Size(image_width_, image_height_), cv::INTER_LINEAR);
       for (int v = 0; v < mat.rows; ++v) {
         for (int u = 0; u < mat.cols; ++u, ++iter_r, ++iter_g, ++iter_b) {
           uint8_t g = color(v, u);
@@ -337,10 +344,12 @@ void PointCloudNode::imageCb(
         }
       }
     } else if (encoding == enc::RGB8) {
-      const cv::Mat_<cv::Vec3b> color(
+      const cv::Mat_<cv::Vec3b> color_original(
         l_image_msg->height, l_image_msg->width,
         (cv::Vec3b *)(&l_image_msg->data[0]),
         l_image_msg->step);
+        cv::Mat_<uint8_t> color;
+        cv::resize(color_original, color, cv::Size(image_width_, image_height_), cv::INTER_LINEAR);
       for (int v = 0; v < mat.rows; ++v) {
         for (int u = 0; u < mat.cols; ++u, ++iter_r, ++iter_g, ++iter_b) {
           const cv::Vec3b & rgb = color(v, u);
@@ -350,10 +359,12 @@ void PointCloudNode::imageCb(
         }
       }
     } else if (encoding == enc::BGR8) {
-      const cv::Mat_<cv::Vec3b> color(
+      const cv::Mat_<cv::Vec3b> color_original(
         l_image_msg->height, l_image_msg->width,
         (cv::Vec3b *)(&l_image_msg->data[0]),
         l_image_msg->step);
+        cv::Mat_<uint8_t> color;
+        cv::resize(color_original, color, cv::Size(image_width_, image_height_), cv::INTER_LINEAR);
       for (int v = 0; v < mat.rows; ++v) {
         for (int u = 0; u < mat.cols; ++u, ++iter_r, ++iter_g, ++iter_b) {
           const cv::Vec3b & bgr = color(v, u);
